@@ -4,7 +4,7 @@ import { templates } from "../data/templates";
 
 export type NodeKind =
   | "service"
-  | "db"
+  | "database"
   | "queue"
   | "cache"
   | "client"
@@ -45,6 +45,8 @@ interface DesignState {
   setTemplate: (templateId: string) => void;
   addNode: (partial: Omit<NodeModel, "id" | "x" | "y">) => void;
   updateNodePosition: (id: string, x: number, y: number) => void;
+  updateNode: (id: string, updates: Partial<Omit<NodeModel, "id" | "x" | "y">>) => void;
+  deleteNode: (id: string) => void;
   addConnection: (from: string, to: string) => void;
   selectNode: (id?: string) => void;
   setRepoLink: (link: string) => void;
@@ -87,6 +89,18 @@ export const useDesignStore = create<DesignState>((set) => ({
       nodes: state.nodes.map((node) =>
         node.id === id ? { ...node, x: Math.max(24, x), y: Math.max(24, y) } : node
       ),
+    })),
+  updateNode: (id, updates) =>
+    set((state) => ({
+      nodes: state.nodes.map((node) =>
+        node.id === id ? { ...node, ...updates } : node
+      ),
+    })),
+  deleteNode: (id) =>
+    set((state) => ({
+      nodes: state.nodes.filter((node) => node.id !== id),
+      connections: state.connections.filter((c) => c.from !== id && c.to !== id),
+      selectedNodeId: state.selectedNodeId === id ? undefined : state.selectedNodeId,
     })),
   addConnection: (from, to) =>
     set((state) => {

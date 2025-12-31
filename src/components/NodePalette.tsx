@@ -8,9 +8,9 @@ const categories: Record<NodeCategory, { label: string; nodes: { label: string; 
   databases: {
     label: "Databases",
     nodes: [
-      { label: "SQL Database", kind: "db", color: "#34d399", detail: "PostgreSQL, MySQL, etc", services: ["PostgreSQL", "MySQL", "MariaDB", "SQL Server"] },
-      { label: "NoSQL Database", kind: "db", color: "#10b981", detail: "MongoDB, Cassandra", services: ["MongoDB", "Cassandra", "DynamoDB", "CosmosDB"] },
-      { label: "Time Series DB", kind: "db", color: "#059669", detail: "InfluxDB, Prometheus", services: ["InfluxDB", "Prometheus", "TimescaleDB"] },
+      { label: "SQL Database", kind: "database", color: "#34d399", detail: "PostgreSQL, MySQL, etc", services: ["PostgreSQL", "MySQL", "MariaDB", "SQL Server"] },
+      { label: "NoSQL Database", kind: "database", color: "#10b981", detail: "MongoDB, Cassandra", services: ["MongoDB", "Cassandra", "DynamoDB", "CosmosDB"] },
+      { label: "Time Series DB", kind: "database", color: "#059669", detail: "InfluxDB, Prometheus", services: ["InfluxDB", "Prometheus", "TimescaleDB"] },
     ],
   },
   apis: {
@@ -73,7 +73,7 @@ const categories: Record<NodeCategory, { label: string; nodes: { label: string; 
     label: "Machine Learning",
     nodes: [
       { label: "ML Model", kind: "service", color: "#ec4899", detail: "TensorFlow, PyTorch", services: ["TensorFlow", "PyTorch", "scikit-learn"] },
-      { label: "Vector DB", kind: "db", color: "#f472b6", detail: "Pinecone, Weaviate", services: ["Pinecone", "Weaviate", "Milvus"] },
+      { label: "Vector DB", kind: "database", color: "#f472b6", detail: "Pinecone, Weaviate", services: ["Pinecone", "Weaviate", "Milvus"] },
       { label: "LLM Service", kind: "service", color: "#f9a8d4", detail: "OpenAI, Anthropic", services: ["OpenAI", "Anthropic", "Hugging Face"] },
     ],
   },
@@ -81,14 +81,14 @@ const categories: Record<NodeCategory, { label: string; nodes: { label: string; 
     label: "Analytics",
     nodes: [
       { label: "Data Warehouse", kind: "storage", color: "#34d399", detail: "BigQuery, Snowflake", services: ["BigQuery", "Snowflake", "Redshift"] },
-      { label: "Analytics DB", kind: "db", color: "#6ee7b7", detail: "ClickHouse, Druid", services: ["ClickHouse", "Druid", "Presto"] },
+      { label: "Analytics DB", kind: "database", color: "#6ee7b7", detail: "ClickHouse, Druid", services: ["ClickHouse", "Druid", "Presto"] },
       { label: "Search Index", kind: "search", color: "#f472b6", detail: "Elasticsearch, Algolia", services: ["Elasticsearch", "Algolia", "OpenSearch"] },
     ],
   },
   monitoring: {
     label: "Monitoring",
     nodes: [
-      { label: "Metrics Store", kind: "db", color: "#06b6d4", detail: "Prometheus, Datadog", services: ["Prometheus", "Datadog", "New Relic"] },
+      { label: "Metrics Store", kind: "database", color: "#06b6d4", detail: "Prometheus, Datadog", services: ["Prometheus", "Datadog", "New Relic"] },
       { label: "Log Aggregation", kind: "storage", color: "#22d3ee", detail: "ELK, Splunk, Loki", services: ["ELK Stack", "Splunk", "Loki"] },
       { label: "Tracing", kind: "service", color: "#0891b2", detail: "Jaeger, Zipkin, DataDog", services: ["Jaeger", "Zipkin", "Datadog"] },
     ],
@@ -114,11 +114,13 @@ export function NodePalette() {
     new Set(["backends"])
   );
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
-  const [customNodes, setCustomNodes] = useState<{ id: string; name: string; color: string }[]>([]);
   const [customNodeName, setCustomNodeName] = useState("");
+  const [customNodeDetail, setCustomNodeDetail] = useState("");
+  const [customNodeType, setCustomNodeType] = useState<NodeKind>("service");
   const [selectedColor, setSelectedColor] = useState(colorPresets[0].value);
-  const [expandedCustom, setExpandedCustom] = useState(true);
   const [showAddNodeForm, setShowAddNodeForm] = useState(false);
+
+  const nodeKinds: NodeKind[] = ["service", "database", "queue", "cache", "client", "storage", "search"];
 
   const toggleCategory = (category: NodeCategory) => {
     const newExpanded = new Set(expandedCategories);
@@ -140,20 +142,19 @@ export function NodePalette() {
     setExpandedNodes(newExpanded);
   };
 
-  const addCustomNode = () => {
+  const createCustomNode = () => {
     if (customNodeName.trim()) {
-      const newCustomNode = {
-        id: `custom-${Date.now()}`,
-        name: customNodeName.trim(),
+      addNode({
+        label: customNodeName.trim(),
+        kind: customNodeType,
         color: selectedColor,
-      };
-      setCustomNodes([newCustomNode, ...customNodes]);
+        detail: customNodeDetail.trim() || "Custom",
+      });
       setCustomNodeName("");
+      setCustomNodeDetail("");
+      setCustomNodeType("service");
+      setSelectedColor(colorPresets[0].value);
     }
-  };
-
-  const removeCustomNode = (id: string) => {
-    setCustomNodes(customNodes.filter((node) => node.id !== id));
   };
 
   return (
@@ -184,10 +185,27 @@ export function NodePalette() {
             type="text"
             value={customNodeName}
             onChange={(e) => setCustomNodeName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addCustomNode()}
             placeholder="Node name..."
             className="w-full px-2 py-1.5 text-sm bg-slate-800/50 border border-slate-700 rounded text-slate-100 placeholder-slate-500 outline-none focus:border-accent/60 transition"
           />
+          <input
+            type="text"
+            value={customNodeDetail}
+            onChange={(e) => setCustomNodeDetail(e.target.value)}
+            placeholder="Detail/description..."
+            className="w-full px-2 py-1.5 text-sm bg-slate-800/50 border border-slate-700 rounded text-slate-100 placeholder-slate-500 outline-none focus:border-accent/60 transition"
+          />
+          <select
+            value={customNodeType}
+            onChange={(e) => setCustomNodeType(e.target.value as NodeKind)}
+            className="w-full px-2 py-1.5 text-sm bg-slate-800/50 border border-slate-700 rounded text-slate-100 outline-none focus:border-accent/60 transition"
+          >
+            {nodeKinds.map((kind) => (
+              <option key={kind} value={kind}>
+                {kind.charAt(0).toUpperCase() + kind.slice(1)}
+              </option>
+            ))}
+          </select>
           <div className="flex gap-1 flex-wrap">
             {colorPresets.map((color) => (
               <button
@@ -201,68 +219,30 @@ export function NodePalette() {
               />
             ))}
           </div>
-          <button
-            onClick={addCustomNode}
-            disabled={!customNodeName.trim()}
-            className="w-full px-2 py-1.5 text-sm bg-accent/10 text-accent border border-accent/30 rounded transition hover:bg-accent/20 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Create Custom Node
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={createCustomNode}
+              disabled={!customNodeName.trim()}
+              className="flex-1 px-2 py-1.5 text-sm bg-accent/10 text-accent border border-accent/30 rounded transition hover:bg-accent/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Create Node
+            </button>
+            <button
+              onClick={() => {
+                setShowAddNodeForm(false);
+                setCustomNodeName("");
+                setCustomNodeDetail("");
+                setCustomNodeType("service");
+                setSelectedColor(colorPresets[0].value);
+              }}
+              className="flex-1 px-2 py-1.5 text-sm bg-slate-800/50 text-slate-400 border border-slate-700 rounded transition hover:bg-slate-800 hover:text-slate-300"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Custom Nodes */}
-      {customNodes.length > 0 && (
-        <div>
-          <button
-            onClick={() => setExpandedCustom(!expandedCustom)}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900/50 hover:text-slate-100 transition rounded"
-          >
-            {expandedCustom ? (
-              <ChevronDown className="h-4 w-4 text-slate-500" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-slate-500" />
-            )}
-            <span className="font-medium">Custom Nodes</span>
-            <span className="text-xs text-slate-500">({customNodes.length})</span>
-          </button>
-
-          {expandedCustom && (
-            <div className="pl-4 space-y-1">
-              {customNodes.map((customNode) => (
-                <div
-                  key={customNode.id}
-                  className="flex items-center justify-between gap-2 px-3 py-2 text-sm rounded hover:bg-slate-800/60 group"
-                >
-                  <button
-                    onClick={() =>
-                      addNode({
-                        label: customNode.name,
-                        kind: "service",
-                        color: customNode.color,
-                        detail: "Custom",
-                      })
-                    }
-                    className="flex-1 text-left flex items-center gap-2 min-w-0"
-                  >
-                    <div
-                      className="w-3 h-3 rounded flex-shrink-0"
-                      style={{ backgroundColor: customNode.color }}
-                    />
-                    <span className="text-slate-50 truncate">{customNode.name}</span>
-                  </button>
-                  <button
-                    onClick={() => removeCustomNode(customNode.id)}
-                    className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition"
-                  >
-                    <Trash2 className="h-4 w-4 text-slate-600 hover:text-red-400" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Category Nodes */}
       {Object.entries(categories).map(([key, category]) => {

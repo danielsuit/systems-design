@@ -46,7 +46,7 @@ export const templates: TemplateModel[] = [
       {
         id: "db",
         label: "Primary DB",
-        kind: "db",
+        kind: "database",
         x: 890,
         y: 60,
         color: "#34d399",

@@ -31,7 +31,6 @@ export default function CanvasPage() {
             className="flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm text-slate-200 transition hover:border-accent/70"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span>Back to Home</span>
           </button>
         </div>
       </header>
@@ -43,8 +42,8 @@ export default function CanvasPage() {
           </div>
           
           <div className="flex flex-col gap-4 overflow-auto">
-            <NodePalette />
             <NodeInspector />
+            <NodePalette />
             <GitHubRepoBrowser />
           </div>
         </div>

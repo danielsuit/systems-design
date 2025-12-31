@@ -149,14 +149,21 @@ export function GitHubRepoBrowser() {
             node = {
               name: part,
               path: currentPath,
-              type: isFile ? "file" : "folder",
+              type: isFile ? "file" : "dir",
               children: [],
             };
             treeMap.set(key, node);
             current.push(node);
           }
 
-          if (!isFile && node.children) {
+          if (!node) {
+            continue;
+          }
+
+          if (!isFile) {
+            if (!node.children) {
+              node.children = [];
+            }
             current = node.children;
           }
         }
