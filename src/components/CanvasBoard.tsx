@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useDesignStore, NodeModel } from "../store/designStore";
-import { Move, MousePointer2, Link2, ZoomIn, ZoomOut } from "lucide-react";
+import { Move, MousePointer2, Link2, ZoomIn, ZoomOut, X } from "lucide-react";
 import classNames from "classnames";
 
 interface DragState {
@@ -8,6 +8,9 @@ interface DragState {
   offsetX: number;
   offsetY: number;
   zoom: number;
+  startX: number;
+  startY: number;
+  hasMoved: boolean;
 }
 
 interface NodeCardProps {
@@ -40,10 +43,20 @@ function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasu
       if (!drag) return;
       const container = cardRef.current?.parentElement;
       if (!container) return;
+      
+      // Check if pointer has moved beyond threshold (5px)
+      const distance = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+      if (distance < 5) return;
+      
       const rect = container.getBoundingClientRect();
       const x = (e.clientX - rect.left - drag.offsetX) / drag.zoom;
       const y = (e.clientY - rect.top - drag.offsetY) / drag.zoom;
       updateNodePosition(drag.id, x, y);
+      
+      // Mark that movement has happened
+      if (!drag.hasMoved) {
+        setDrag({ ...drag, hasMoved: true });
+      }
     };
 
     const stop = () => setDrag(null);
@@ -70,7 +83,15 @@ function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasu
           onConnectTarget(node.id);
           return;
         }
-        setDrag({ id: node.id, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top, zoom });
+        setDrag({ 
+          id: node.id, 
+          offsetX: e.clientX - rect.left, 
+          offsetY: e.clientY - rect.top, 
+          zoom,
+          startX: e.clientX,
+          startY: e.clientY,
+          hasMoved: false
+        });
         selectNode(node.id);
       }}
       className={classNames(
@@ -99,9 +120,12 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
   const nodes = useDesignStore((s) => s.nodes);
   const connections = useDesignStore((s) => s.connections);
   const addConnection = useDesignStore((s) => s.addConnection);
+  const deleteConnection = useDesignStore((s) => s.deleteConnection);
+  const selectNode = useDesignStore((s) => s.selectNode);
   const [hint, setHint] = useState(true);
   const [connectMode, setConnectMode] = useState(false);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
+  const [hoveredConnectionId, setHoveredConnectionId] = useState<string | null>(null);
   const [connectionToast, setConnectionToast] = useState<string | null>(null);
   const [nodeDims, setNodeDims] = useState<Record<string, { w: number; h: number }>>({});
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -151,13 +175,18 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,_rgba(34,211,238,0.06),_transparent_35%)]" />
       <div className="absolute inset-0 opacity-30" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)", backgroundSize: "48px 48px" }} />
 
-      <div ref={containerRef} className="relative h-full overflow-visible">
+      <div ref={containerRef} className="relative h-full overflow-visible" onClick={(e) => {
+        if (e.target === containerRef.current) {
+          selectNode(undefined);
+        }
+      }}>
         <div className="absolute right-4 top-4 flex items-center gap-2" style={{ zIndex: 10 }}>
           <button
             disabled={nodes.length < 2}
             onClick={() => {
               setConnectMode((prev) => !prev);
               setConnectFrom(null);
+              selectNode(undefined);
               setHint(false);
             }}
             className={classNames(
@@ -175,7 +204,7 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
           </div>
         </div>
 
-        <svg className="pointer-events-none absolute inset-0 overflow-visible" aria-hidden="true" style={{ zIndex: 1 }}>
+        <svg className="absolute inset-0 overflow-visible" aria-hidden="true" style={{ zIndex: 1 }} pointerEvents="auto">
           <defs>
             <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
               <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" />
@@ -190,7 +219,52 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
             const dx = end.x - start.x;
             const curvature = Math.max(48, Math.abs(dx) * 0.4);
             const path = `M ${start.x} ${start.y} C ${start.x + curvature} ${start.y}, ${end.x - curvature} ${end.y}, ${end.x} ${end.y}`;
-            return <path key={c.id} d={path} stroke="#38bdf8" strokeWidth={2.5} fill="none" markerEnd="url(#arrow)" opacity={0.9} filter="drop-shadow(0 0 4px rgba(56,189,248,0.35))" />;
+            const midX = (start.x + end.x) / 2;
+            const midY = (start.y + end.y) / 2;
+            return (
+              <g 
+                key={c.id} 
+                onMouseEnter={() => setHoveredConnectionId(c.id)}
+                onMouseLeave={() => setHoveredConnectionId(null)}
+                style={{ cursor: "pointer" }}
+              >
+                <path d={path} stroke="#38bdf8" strokeWidth={2.5} fill="none" markerEnd="url(#arrow)" opacity={0.9} filter="drop-shadow(0 0 4px rgba(56,189,248,0.35))" />
+                <path d={path} stroke="transparent" strokeWidth={12} fill="none" />
+                {hoveredConnectionId === c.id && (
+                  <circle 
+                    cx={midX} 
+                    cy={midY} 
+                    r="14" 
+                    fill="#dc2626" 
+                    opacity="0.9"
+                    style={{ cursor: "pointer" }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteConnection(c.id);
+                      setConnectionToast("Connection removed");
+                      window.setTimeout(() => setConnectionToast(null), 1600);
+                    }}
+                  />
+                )}
+                {hoveredConnectionId === c.id && (
+                  <g 
+                    transform={`translate(${midX}, ${midY})`}
+                    style={{ cursor: "pointer", pointerEvents: "none" }}
+                  >
+                    <text 
+                      x="0" 
+                      y="4" 
+                      textAnchor="middle" 
+                      fontSize="12" 
+                      fill="white" 
+                      fontWeight="bold"
+                    >
+                      ×
+                    </text>
+                  </g>
+                )}
+              </g>
+            );
           })}
         </svg>
 
