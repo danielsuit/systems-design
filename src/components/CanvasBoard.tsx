@@ -20,9 +20,10 @@ interface NodeCardProps {
   onConnectTarget?: (id: string) => void;
   onMeasure?: (id: string, size: { w: number; h: number }) => void;
   zoom?: number;
+  panOffset?: { x: number; y: number };
 }
 
-function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasure, zoom = 1 }: NodeCardProps) {
+function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasure, zoom = 1, panOffset = { x: 0, y: 0 } }: NodeCardProps) {
   const updateNodePosition = useDesignStore((s) => s.updateNodePosition);
   const selectNode = useDesignStore((s) => s.selectNode);
   const selectedId = useDesignStore((s) => s.selectedNodeId);
@@ -33,24 +34,40 @@ function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasu
     if (!cardRef.current || !onMeasure) return;
     const rect = cardRef.current.getBoundingClientRect();
     onMeasure(node.id, {
-      w: rect.width,
-      h: rect.height,
+      w: rect.width / zoom,
+      h: rect.height / zoom,
     });
-  }, [node.id, onMeasure]);
+  }, [node.id, onMeasure, zoom]);
 
   useEffect(() => {
     const handleMove = (e: PointerEvent) => {
       if (!drag) return;
       const container = cardRef.current?.parentElement;
-      if (!container) return;
+      const card = cardRef.current;
+      if (!container || !card) return;
       
       // Check if pointer has moved beyond threshold (5px)
       const distance = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
       if (distance < 5) return;
       
-      const rect = container.getBoundingClientRect();
-      const x = (e.clientX - rect.left - drag.offsetX) / drag.zoom;
-      const y = (e.clientY - rect.top - drag.offsetY) / drag.zoom;
+      const containerRect = container.getBoundingClientRect();
+      const cardRect = card.getBoundingClientRect();
+      
+      // Calculate unscaled node dimensions
+      const nodeWidth = cardRect.width / drag.zoom;
+      const nodeHeight = cardRect.height / drag.zoom;
+      
+      // Calculate position with canvas bounds (account for pan offset)
+      let x = (e.clientX - containerRect.left - drag.offsetX - panOffset.x) / drag.zoom;
+      let y = (e.clientY - containerRect.top - drag.offsetY - panOffset.y) / drag.zoom;
+      
+      // Constrain to canvas boundaries
+      const maxX = (containerRect.width / drag.zoom) - nodeWidth;
+      const maxY = (containerRect.height / drag.zoom) - nodeHeight;
+      
+      x = Math.max(0, Math.min(x, maxX));
+      y = Math.max(0, Math.min(y, maxY));
+      
       updateNodePosition(drag.id, x, y);
       
       // Mark that movement has happened
@@ -69,7 +86,7 @@ function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasu
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", stop);
     };
-  }, [drag, updateNodePosition, zoom]);
+  }, [drag, updateNodePosition, zoom, panOffset]);
 
   return (
     <div
@@ -101,7 +118,8 @@ function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasu
         connectSourceId === node.id && "ring-2 ring-accent"
       )}
       style={{
-        transform: `translate(${node.x * zoom}px, ${node.y * zoom}px) scale(${zoom})`,
+        transform: `translate(${node.x * zoom + panOffset.x}px, ${node.y * zoom + panOffset.y}px) scale(${zoom})`,
+        transformOrigin: '0 0',
         zIndex: 5
       }}
     >
@@ -128,6 +146,9 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
   const [hoveredConnectionId, setHoveredConnectionId] = useState<string | null>(null);
   const [connectionToast, setConnectionToast] = useState<string | null>(null);
   const [nodeDims, setNodeDims] = useState<Record<string, { w: number; h: number }>>({});
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement | null>(null);
   const hintTimeout = useRef<number | null>(null);
 
@@ -138,6 +159,28 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
       if (hintTimeout.current) window.clearTimeout(hintTimeout.current);
     };
   }, [nodes]);
+
+  useEffect(() => {
+    if (!isPanning) return;
+    
+    const handlePanMove = (e: PointerEvent) => {
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      setPanOffset({ x: dx, y: dy });
+    };
+    
+    const handlePanEnd = () => {
+      setIsPanning(false);
+    };
+    
+    window.addEventListener("pointermove", handlePanMove);
+    window.addEventListener("pointerup", handlePanEnd);
+    
+    return () => {
+      window.removeEventListener("pointermove", handlePanMove);
+      window.removeEventListener("pointerup", handlePanEnd);
+    };
+  }, [isPanning, panStart]);
 
   const empty = useMemo(() => nodes.length === 0, [nodes]);
 
@@ -166,20 +209,30 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
     const dims = nodeDims[node.id];
     const w = dims?.w ?? 176;
     const h = dims?.h ?? 118;
-    return { x: (node.x + w / 2) * zoom, y: (node.y + h / 2) * zoom };
+    return { x: (node.x + w / 2) * zoom + panOffset.x, y: (node.y + h / 2) * zoom + panOffset.y };
   };
 
   return (
-    <div className="relative h-full rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="relative h-full rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(124,58,237,0.08),_transparent_35%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,_rgba(34,211,238,0.06),_transparent_35%)]" />
       <div className="absolute inset-0 opacity-30" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)", backgroundSize: "48px 48px" }} />
 
-      <div ref={containerRef} className="relative h-full overflow-visible" onClick={(e) => {
-        if (e.target === containerRef.current) {
-          selectNode(undefined);
-        }
-      }}>
+      <div 
+        ref={containerRef} 
+        className="relative h-full cursor-grab active:cursor-grabbing" 
+        onClick={(e) => {
+          if (e.target === containerRef.current) {
+            selectNode(undefined);
+          }
+        }}
+        onPointerDown={(e) => {
+          if (e.target === containerRef.current) {
+            setIsPanning(true);
+            setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+          }
+        }}
+      >
         <div className="absolute right-4 top-4 flex items-center gap-2" style={{ zIndex: 10 }}>
           <button
             disabled={nodes.length < 2}
@@ -277,6 +330,7 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
             onConnectTarget={handleConnectTarget}
             onMeasure={registerMeasure}
             zoom={zoom}
+            panOffset={panOffset}
           />
         ))}
 
@@ -290,21 +344,21 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
         ) : null}
 
         {hint ? (
-          <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-slate-900/90 px-3 py-2 text-xs text-slate-300 shadow-card">
+          <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-slate-900/90 px-3 py-2 text-xs text-slate-300 shadow-card" style={{ zIndex: 20 }}>
             <Move className="h-4 w-4 text-accent" />
             Drag nodes to arrange the architecture
           </div>
         ) : null}
 
         {connectMode ? (
-          <div className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full bg-slate-900/90 px-3 py-2 text-xs text-accent shadow-card">
+          <div className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full bg-slate-900/90 px-3 py-2 text-xs text-accent shadow-card" style={{ zIndex: 20 }}>
             <Link2 className="h-4 w-4" />
             {connectFrom ? "Select a target node" : "Select a source node"}
           </div>
         ) : null}
 
         {connectionToast ? (
-          <div className="absolute inset-x-0 top-4 flex justify-center">
+          <div className="absolute inset-x-0 top-4 flex justify-center" style={{ zIndex: 20 }}>
             <div className="rounded-full bg-slate-900/95 px-4 py-2 text-xs text-accent shadow-card border border-accent/40">
               {connectionToast}
             </div>
@@ -312,7 +366,7 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
         ) : null}
 
         {/* Zoom Controls */}
-        <div className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/70 px-2 py-1">
+        <div className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/70 px-2 py-1" style={{ zIndex: 20 }}>
           <button
             onClick={onZoomOut}
             disabled={zoom <= 0.3}

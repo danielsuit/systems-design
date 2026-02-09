@@ -91,7 +91,7 @@ export const useDesignStore = create<DesignState>()(
       updateNodePosition: (id, x, y) =>
         set((state) => ({
           nodes: state.nodes.map((node) =>
-            node.id === id ? { ...node, x: Math.max(24, x), y: Math.max(24, y) } : node
+            node.id === id ? { ...node, x, y } : node
           ),
         })),
       updateNode: (id, updates) =>
