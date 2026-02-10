@@ -46,22 +46,18 @@ function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasu
       const card = cardRef.current;
       if (!container || !card) return;
       
-      // Check if pointer has moved beyond threshold (5px)
       const distance = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
       if (distance < 5) return;
       
       const containerRect = container.getBoundingClientRect();
       const cardRect = card.getBoundingClientRect();
       
-      // Calculate unscaled node dimensions
       const nodeWidth = cardRect.width / drag.zoom;
       const nodeHeight = cardRect.height / drag.zoom;
       
-      // Calculate position with canvas bounds (account for pan offset)
       let x = (e.clientX - containerRect.left - drag.offsetX - panOffset.x) / drag.zoom;
       let y = (e.clientY - containerRect.top - drag.offsetY - panOffset.y) / drag.zoom;
       
-      // Constrain to canvas boundaries
       const maxX = (containerRect.width / drag.zoom) - nodeWidth;
       const maxY = (containerRect.height / drag.zoom) - nodeHeight;
       
@@ -70,7 +66,6 @@ function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasu
       
       updateNodePosition(drag.id, x, y);
       
-      // Mark that movement has happened
       if (!drag.hasMoved) {
         setDrag({ ...drag, hasMoved: true });
       }
@@ -87,6 +82,9 @@ function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasu
       window.removeEventListener("pointerup", stop);
     };
   }, [drag, updateNodePosition, zoom, panOffset]);
+
+  const isSelected = selectedId === node.id;
+  const isSource = connectSourceId === node.id;
 
   return (
     <div
@@ -112,29 +110,67 @@ function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasu
         selectNode(node.id);
       }}
       className={classNames(
-        "absolute w-44 cursor-grab select-none rounded-xl border border-white/5 bg-slate-800/90 p-3 shadow-card transition",
-        selectedId === node.id && "ring-2 ring-accent/80",
-        connectMode && "cursor-crosshair",
-        connectSourceId === node.id && "ring-2 ring-accent"
+        "absolute w-48 select-none rounded-xl p-4 transition-shadow duration-200",
+        connectMode ? "cursor-crosshair" : "cursor-grab",
       )}
       style={{
         transform: `translate(${node.x * zoom + panOffset.x}px, ${node.y * zoom + panOffset.y}px) scale(${zoom})`,
         transformOrigin: '0 0',
-        zIndex: 5
+        zIndex: isSelected ? 10 : 5,
+        background: 'var(--color-surface-2)',
+        border: isSelected
+          ? '1px solid var(--color-accent)'
+          : isSource
+            ? '1px solid var(--color-accent-muted)'
+            : '1px solid var(--color-border)',
+        boxShadow: isSelected
+          ? '0 0 0 3px var(--color-accent-muted), 0 8px 24px rgba(0,0,0,0.3)'
+          : '0 2px 8px rgba(0,0,0,0.2)',
       }}
     >
-      <div className="flex items-center justify-between">
-        <div className="h-3 w-3 rounded-full" style={{ background: node.color }} />
-        <Move className="h-4 w-4 text-slate-500" />
+      {/* Top accent line for selected */}
+      {isSelected && (
+        <div
+          className="absolute top-0 left-3 right-3 h-0.5 rounded-full"
+          style={{ background: 'var(--color-accent)' }}
+        />
+      )}
+
+      <div className="flex items-center justify-between mb-2">
+        <div
+          className="h-3 w-3 rounded-full"
+          style={{
+            background: node.color,
+            boxShadow: `0 0 8px ${node.color}40`,
+          }}
+        />
+        <Move className="h-3.5 w-3.5" style={{ color: 'var(--color-text-ghost)' }} />
       </div>
-      <p className="mt-2 font-semibold text-slate-50">{node.label}</p>
-      {node.detail ? <p className="text-xs text-slate-400">{node.detail}</p> : null}
-      <p className="mt-2 text-[10px] uppercase tracking-wide text-slate-500">{node.kind}</p>
+      <p
+        className="font-body font-semibold text-sm"
+        style={{ color: 'var(--color-text-primary)' }}
+      >
+        {node.label}
+      </p>
+      {node.detail && (
+        <p
+          className="text-xs mt-1 leading-relaxed"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
+          {node.detail}
+        </p>
+      )}
+      <p
+        className="mt-2.5 text-[10px] uppercase tracking-widest font-semibold"
+        style={{ color: 'var(--color-text-ghost)' }}
+      >
+        {node.kind}
+      </p>
     </div>
   );
 }
 
-export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zoom?: number; onZoomIn?: () => void; onZoomOut?: () => void; onResetZoom?: () => void }) {
+export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom, onZoomChange }: { zoom?: number; onZoomIn?: () => void; onZoomOut?: () => void; onResetZoom?: () => void; onZoomChange?: (newZoom: number) => void }) {
   const nodes = useDesignStore((s) => s.nodes);
   const connections = useDesignStore((s) => s.connections);
   const addConnection = useDesignStore((s) => s.addConnection);
@@ -182,6 +218,28 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
     };
   }, [isPanning, panStart]);
 
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (!onZoomChange) return;
+      e.preventDefault();
+      
+      const delta = -e.deltaY * 0.001;
+      const newZoom = zoom + delta;
+      onZoomChange(newZoom);
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('wheel', handleWheel, { passive: false });
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener('wheel', handleWheel);
+      }
+    };
+  }, [zoom, onZoomChange]);
+
   const empty = useMemo(() => nodes.length === 0, [nodes]);
 
   const handleConnectTarget = (id: string) => {
@@ -207,16 +265,58 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
 
   const getCenter = (node: NodeModel) => {
     const dims = nodeDims[node.id];
-    const w = dims?.w ?? 176;
+    const w = dims?.w ?? 192;
     const h = dims?.h ?? 118;
     return { x: (node.x + w / 2) * zoom + panOffset.x, y: (node.y + h / 2) * zoom + panOffset.y };
   };
 
   return (
-    <div className="relative h-full rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(124,58,237,0.08),_transparent_35%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,_rgba(34,211,238,0.06),_transparent_35%)]" />
-      <div className="absolute inset-0 opacity-30" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)", backgroundSize: "48px 48px" }} />
+    <div
+      className="relative h-full rounded-xl overflow-hidden"
+      style={{
+        background: 'var(--color-surface-1)',
+        border: '1px solid var(--color-border)',
+      }}
+    >
+      {/* Ambient background */}
+      <div 
+        className="absolute animate-pulse-soft pointer-events-none" 
+        style={{ 
+          left: '-100%',
+          top: '-100%',
+          width: '300%',
+          height: '300%',
+          background: 'radial-gradient(circle at 30% 30%, rgba(212,134,78,0.04), transparent 50%)',
+          transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
+        }}
+      />
+      <div 
+        className="absolute animate-pulse-soft pointer-events-none" 
+        style={{ 
+          left: '-100%',
+          top: '-100%',
+          width: '300%',
+          height: '300%',
+          background: 'radial-gradient(circle at 70% 60%, rgba(212,134,78,0.03), transparent 40%)',
+          transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
+          animationDelay: '1.5s',
+        }}
+      />
+      {/* Grid pattern */}
+      <div 
+        className="absolute opacity-20 pointer-events-none" 
+        style={{ 
+          left: '-100%',
+          top: '-100%',
+          width: '300%',
+          height: '300%',
+          backgroundImage: `
+            radial-gradient(circle, rgba(212,134,78,0.15) 1px, transparent 1px)
+          `,
+          backgroundSize: '48px 48px',
+          transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
+        }} 
+      />
 
       <div 
         ref={containerRef} 
@@ -233,6 +333,7 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
           }
         }}
       >
+        {/* Toolbar */}
         <div className="absolute right-4 top-4 flex items-center gap-2" style={{ zIndex: 10 }}>
           <button
             disabled={nodes.length < 2}
@@ -242,25 +343,33 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
               selectNode(undefined);
               setHint(false);
             }}
-            className={classNames(
-              "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition",
-              connectMode
-                ? "border-accent/70 bg-accent/10 text-accent"
-                : "border-slate-800 bg-slate-900/80 text-slate-200 hover:border-accent/50"
-            )}
+            className="flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              background: connectMode ? 'var(--color-accent-muted)' : 'var(--color-surface-2)',
+              color: connectMode ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              border: connectMode ? '1px solid var(--color-accent-muted)' : '1px solid var(--color-border)',
+            }}
           >
             <Link2 className="h-4 w-4" />
-            <span>{connectMode ? "Connecting..." : "Connect nodes"}</span>
+            <span>{connectMode ? "Connecting..." : "Connect"}</span>
           </button>
-          <div className="rounded-full border border-slate-800 bg-slate-900/80 px-2.5 py-1 text-xs text-slate-300">
-            {connections.length} connections
+          <div
+            className="rounded-lg px-3 py-2 text-xs font-medium tabular-nums"
+            style={{
+              background: 'var(--color-surface-2)',
+              color: 'var(--color-text-muted)',
+              border: '1px solid var(--color-border)',
+            }}
+          >
+            {connections.length} edges
           </div>
         </div>
 
+        {/* Connection SVG */}
         <svg className="absolute inset-0 overflow-visible" aria-hidden="true" style={{ zIndex: 1 }} pointerEvents="auto">
           <defs>
             <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" />
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-accent)" />
             </marker>
           </defs>
           {connections.map((c) => {
@@ -274,6 +383,7 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
             const path = `M ${start.x} ${start.y} C ${start.x + curvature} ${start.y}, ${end.x - curvature} ${end.y}, ${end.x} ${end.y}`;
             const midX = (start.x + end.x) / 2;
             const midY = (start.y + end.y) / 2;
+            const isHovered = hoveredConnectionId === c.id;
             return (
               <g 
                 key={c.id} 
@@ -281,14 +391,22 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
                 onMouseLeave={() => setHoveredConnectionId(null)}
                 style={{ cursor: "pointer" }}
               >
-                <path d={path} stroke="#38bdf8" strokeWidth={2.5} fill="none" markerEnd="url(#arrow)" opacity={0.9} filter="drop-shadow(0 0 4px rgba(56,189,248,0.35))" />
+                <path
+                  d={path}
+                  stroke="var(--color-accent)"
+                  strokeWidth={isHovered ? 3 : 2}
+                  fill="none"
+                  markerEnd="url(#arrow)"
+                  opacity={isHovered ? 1 : 0.6}
+                  style={{ transition: 'opacity 0.2s, stroke-width 0.2s' }}
+                />
                 <path d={path} stroke="transparent" strokeWidth={12} fill="none" />
-                {hoveredConnectionId === c.id && (
+                {isHovered && (
                   <circle 
                     cx={midX} 
                     cy={midY} 
-                    r="14" 
-                    fill="#dc2626" 
+                    r="12" 
+                    fill="#c0392b"
                     opacity="0.9"
                     style={{ cursor: "pointer" }}
                     onClick={(e) => {
@@ -299,7 +417,7 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
                     }}
                   />
                 )}
-                {hoveredConnectionId === c.id && (
+                {isHovered && (
                   <g 
                     transform={`translate(${midX}, ${midY})`}
                     style={{ cursor: "pointer", pointerEvents: "none" }}
@@ -308,7 +426,7 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
                       x="0" 
                       y="4" 
                       textAnchor="middle" 
-                      fontSize="12" 
+                      fontSize="11" 
                       fill="white" 
                       fontWeight="bold"
                     >
@@ -321,6 +439,7 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
           })}
         </svg>
 
+        {/* Nodes */}
         {nodes.map((node) => (
           <NodeCard
             key={node.id}
@@ -334,50 +453,110 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
           />
         ))}
 
-        {empty ? (
-          <div className="absolute inset-0 grid place-items-center text-center text-slate-400">
-            <div className="flex flex-col items-center gap-2">
-              <MousePointer2 className="h-6 w-6" />
-              <p>Pick a template or add nodes to start sketching.</p>
+        {/* Empty state */}
+        {empty && (
+          <div
+            className="absolute inset-0 grid place-items-center text-center"
+            style={{ color: 'var(--color-text-ghost)' }}
+          >
+            <div className="flex flex-col items-center gap-3">
+              <div
+                className="flex h-12 w-12 items-center justify-center rounded-xl"
+                style={{ background: 'var(--color-surface-2)' }}
+              >
+                <MousePointer2 className="h-5 w-5" style={{ color: 'var(--color-text-muted)' }} />
+              </div>
+              <p className="font-display text-sm" style={{ color: 'var(--color-text-muted)' }}>
+                Pick a template or add nodes to begin
+              </p>
             </div>
           </div>
-        ) : null}
+        )}
 
-        {hint ? (
-          <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-slate-900/90 px-3 py-2 text-xs text-slate-300 shadow-card" style={{ zIndex: 20 }}>
-            <Move className="h-4 w-4 text-accent" />
-            Drag nodes to arrange the architecture
+        {/* Hint toast */}
+        {hint && !empty && (
+          <div
+            className="absolute bottom-16 left-4 flex items-center gap-2.5 rounded-lg px-4 py-2.5 text-xs font-medium animate-fade-up shadow-card"
+            style={{
+              zIndex: 20,
+              background: 'var(--color-surface-2)',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-text-secondary)',
+            }}
+          >
+            <Move className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+            Drag nodes to arrange
           </div>
-        ) : null}
+        )}
 
-        {connectMode ? (
-          <div className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full bg-slate-900/90 px-3 py-2 text-xs text-accent shadow-card" style={{ zIndex: 20 }}>
+        {/* Connect mode hint */}
+        {connectMode && (
+          <div
+            className="absolute bottom-16 right-4 flex items-center gap-2.5 rounded-lg px-4 py-2.5 text-xs font-medium animate-fade-up shadow-card"
+            style={{
+              zIndex: 20,
+              background: 'var(--color-accent-subtle)',
+              border: '1px solid var(--color-accent-muted)',
+              color: 'var(--color-accent)',
+            }}
+          >
             <Link2 className="h-4 w-4" />
             {connectFrom ? "Select a target node" : "Select a source node"}
           </div>
-        ) : null}
+        )}
 
-        {connectionToast ? (
+        {/* Connection toast */}
+        {connectionToast && (
           <div className="absolute inset-x-0 top-4 flex justify-center" style={{ zIndex: 20 }}>
-            <div className="rounded-full bg-slate-900/95 px-4 py-2 text-xs text-accent shadow-card border border-accent/40">
+            <div
+              className="rounded-lg px-4 py-2.5 text-xs font-medium shadow-elevated animate-fade-up"
+              style={{
+                background: 'var(--color-surface-2)',
+                color: 'var(--color-accent)',
+                border: '1px solid var(--color-accent-muted)',
+                animationDuration: '0.3s',
+              }}
+            >
               {connectionToast}
             </div>
           </div>
-        ) : null}
+        )}
 
         {/* Zoom Controls */}
-        <div className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/70 px-2 py-1" style={{ zIndex: 20 }}>
+        <div
+          className="absolute bottom-4 right-4 flex items-center gap-1 rounded-lg px-1.5 py-1"
+          style={{
+            zIndex: 20,
+            background: 'var(--color-surface-2)',
+            border: '1px solid var(--color-border)',
+          }}
+        >
           <button
             onClick={onZoomOut}
             disabled={zoom <= 0.3}
-            className="p-1.5 rounded-lg text-slate-300 transition hover:bg-slate-800 hover:text-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="p-2 rounded-md transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{ color: 'var(--color-text-secondary)' }}
+            onMouseEnter={(e) => {
+              if (zoom > 0.3) (e.currentTarget as HTMLElement).style.background = 'var(--color-surface-3)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.background = 'transparent';
+            }}
             title="Zoom out"
+            aria-label="Zoom out"
           >
             <ZoomOut className="h-4 w-4" />
           </button>
           <button
             onClick={onResetZoom}
-            className="px-2 py-1 text-xs text-slate-400 hover:text-slate-200 transition"
+            className="px-2.5 py-1.5 text-xs font-medium tabular-nums rounded-md transition-all duration-150"
+            style={{ color: 'var(--color-text-muted)' }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.color = 'var(--color-text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.color = 'var(--color-text-muted)';
+            }}
             title="Reset zoom"
           >
             {Math.round(zoom * 100)}%
@@ -385,8 +564,16 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom }: { zo
           <button
             onClick={onZoomIn}
             disabled={zoom >= 2}
-            className="p-1.5 rounded-lg text-slate-300 transition hover:bg-slate-800 hover:text-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="p-2 rounded-md transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{ color: 'var(--color-text-secondary)' }}
+            onMouseEnter={(e) => {
+              if (zoom < 2) (e.currentTarget as HTMLElement).style.background = 'var(--color-surface-3)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.background = 'transparent';
+            }}
             title="Zoom in"
+            aria-label="Zoom in"
           >
             <ZoomIn className="h-4 w-4" />
           </button>

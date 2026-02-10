@@ -2,24 +2,235 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Design Tokens ─── */
 :root {
+  /* Surface palette — warm charcoal ink */
+  --color-bg: #1a1714;
+  --color-surface-1: #211e1a;
+  --color-surface-2: #2a2621;
+  --color-surface-3: #342f29;
+
+  /* Text hierarchy */
+  --color-text-primary: #ede8e1;
+  --color-text-secondary: #b8b0a4;
+  --color-text-muted: #8a8177;
+  --color-text-ghost: #5c554d;
+
+  /* Accent — warm copper */
+  --color-accent: #d4864e;
+  --color-accent-hover: #e09a65;
+  --color-accent-muted: rgba(212, 134, 78, 0.25);
+  --color-accent-subtle: rgba(212, 134, 78, 0.08);
+
+  /* Borders */
+  --color-border: rgba(237, 232, 225, 0.08);
+  --color-border-subtle: rgba(237, 232, 225, 0.04);
+
+  /* Radius philosophy: soft */
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Transition tokens */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+
   color-scheme: dark;
 }
 
-body {
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+/* ─── Base Reset ─── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Figtree', sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg);
+  margin: 0;
+}
+
+/* ─── Typography ─── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+/* ─── Selection ─── */
+::selection {
+  background: var(--color-accent-muted);
+  color: var(--color-text-primary);
+}
+
+/* ─── Focus States ─── */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Scrollbar ─── */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1f2937;
+  background: var(--color-surface-3);
   border-radius: 999px;
 }
 
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-ghost);
+}
+
 ::-webkit-scrollbar-track {
-  background: #0b1224;
+  background: transparent;
+}
+
+/* ─── Reduced Motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─── Noise Texture Overlay ─── */
+.noise-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* ─── Staggered Animation Utilities ─── */
+.stagger-1 { animation-delay: 0ms; }
+.stagger-2 { animation-delay: 80ms; }
+.stagger-3 { animation-delay: 160ms; }
+.stagger-4 { animation-delay: 240ms; }
+.stagger-5 { animation-delay: 320ms; }
+.stagger-6 { animation-delay: 400ms; }
+
+/* ─── Glass Panels ─── */
+.glass {
+  background: rgba(33, 30, 26, 0.72);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+
+/* ─── Decorative Accent Line ─── */
+.accent-line-top {
+  position: relative;
+}
+
+.accent-line-top::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-accent-muted),
+    transparent
+  );
+}
+
+/* ─── Button Base ─── */
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+      px-6 py-3 rounded-lg
+      font-body font-semibold text-sm
+      transition-all;
+    background: var(--color-accent);
+    color: var(--color-bg);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2), 0 0 0 0 var(--color-accent-muted);
+  }
+
+  .btn-primary:hover {
+    background: var(--color-accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 0 0 0 var(--color-accent-muted);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2
+      px-4 py-2.5 rounded-lg
+      font-body font-medium text-sm
+      transition-all;
+    color: var(--color-text-secondary);
+    background: transparent;
+    border: 1px solid var(--color-border);
+  }
+
+  .btn-ghost:hover {
+    color: var(--color-text-primary);
+    background: var(--color-surface-2);
+    border-color: var(--color-border);
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 text-sm rounded-lg
+      transition-all duration-200;
+    background: var(--color-surface-1);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    font-family: 'Figtree', sans-serif;
+    min-height: 44px;
+  }
+
+  .input-field::placeholder {
+    color: var(--color-text-ghost);
+  }
+
+  .input-field:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-muted);
+  }
+
+  .panel {
+    background: var(--color-surface-1);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+  }
+
+  .overline {
+    @apply text-xs font-semibold uppercase tracking-widest;
+    color: var(--color-text-ghost);
+    letter-spacing: 0.1em;
+  }
 }

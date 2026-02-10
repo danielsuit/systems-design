@@ -1,5 +1,5 @@
 import { useDesignStore, NodeKind } from "../store/designStore";
-import { Info, Trash2 } from "lucide-react";
+import { Info, Trash2, Pencil, Check, X } from "lucide-react";
 import { useState } from "react";
 
 const nodeKinds: NodeKind[] = ["service", "database", "queue", "cache", "client", "storage", "search"];
@@ -30,11 +30,19 @@ export function NodeInspector() {
 
   if (!node) {
     return (
-      <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-2.5 text-xs text-slate-400">
-        <div className="flex items-center gap-2">
-          <Info className="h-3.5 w-3.5" />
+      <div
+        className="rounded-xl p-4"
+        style={{
+          background: 'var(--color-surface-1)',
+          border: '1px solid var(--color-border)',
+        }}
+      >
+        <div className="flex items-center gap-2.5">
+          <Info className="h-4 w-4" style={{ color: 'var(--color-text-ghost)' }} />
+          <p className="text-sm" style={{ color: 'var(--color-text-ghost)' }}>
+            Select a node to inspect
+          </p>
         </div>
-        <p className="mt-1 text-slate-500 text-xs">Select a node to view details.</p>
       </div>
     );
   }
@@ -59,35 +67,49 @@ export function NodeInspector() {
 
   if (isEditing) {
     return (
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+      <div
+        className="rounded-xl p-5 space-y-4 animate-fade-in"
+        style={{
+          background: 'var(--color-surface-1)',
+          border: '1px solid var(--color-accent-muted)',
+          animationDuration: '0.2s',
+        }}
+      >
+        {/* Accent line */}
+        <div
+          className="h-0.5 rounded-full -mt-1 mb-3"
+          style={{ background: 'var(--color-accent)' }}
+        />
+
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-slate-400 uppercase">Label</label>
+            <label className="overline mb-1.5 block">Label</label>
             <input
               type="text"
               value={editLabel}
               onChange={(e) => setEditLabel(e.target.value)}
-              className="w-full mt-1 px-2 py-1.5 text-sm bg-slate-800/50 border border-slate-700 rounded text-slate-100 outline-none focus:border-accent/60 transition"
+              className="input-field"
             />
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-400 uppercase">Detail</label>
+            <label className="overline mb-1.5 block">Detail</label>
             <input
               type="text"
               value={editDetail}
               onChange={(e) => setEditDetail(e.target.value)}
               placeholder="Optional description"
-              className="w-full mt-1 px-2 py-1.5 text-sm bg-slate-800/50 border border-slate-700 rounded text-slate-100 placeholder-slate-500 outline-none focus:border-accent/60 transition"
+              className="input-field"
             />
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-400 uppercase">Type</label>
+            <label className="overline mb-1.5 block">Type</label>
             <select
               value={editKind}
               onChange={(e) => setEditKind(e.target.value as NodeKind)}
-              className="w-full mt-1 px-2 py-1.5 text-sm bg-slate-800/50 border border-slate-700 rounded text-slate-100 outline-none focus:border-accent/60 transition"
+              className="input-field"
+              style={{ cursor: 'pointer' }}
             >
               {nodeKinds.map((kind) => (
                 <option key={kind} value={kind}>
@@ -98,16 +120,20 @@ export function NodeInspector() {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-400 uppercase">Color</label>
-            <div className="flex gap-1 mt-2 flex-wrap">
+            <label className="overline mb-2 block">Color</label>
+            <div className="flex gap-1.5 flex-wrap">
               {colorPresets.map((color) => (
                 <button
                   key={color.value}
                   onClick={() => setEditColor(color.value)}
-                  className={`w-6 h-6 rounded transition border-2 ${
-                    editColor === color.value ? "border-accent" : "border-slate-600 hover:border-slate-500"
-                  }`}
-                  style={{ backgroundColor: color.value }}
+                  className="w-7 h-7 rounded-lg transition-all duration-150"
+                  style={{
+                    backgroundColor: color.value,
+                    boxShadow: editColor === color.value
+                      ? `0 0 0 2px var(--color-bg), 0 0 0 4px ${color.value}`
+                      : 'none',
+                    transform: editColor === color.value ? 'scale(1.1)' : 'scale(1)',
+                  }}
                   title={color.name}
                 />
               ))}
@@ -117,15 +143,19 @@ export function NodeInspector() {
           <div className="flex gap-2 pt-2">
             <button
               onClick={handleSave}
-              className="flex-1 px-2 py-1.5 text-sm bg-accent/10 text-accent border border-accent/30 rounded transition hover:bg-accent/20"
+              className="btn-primary flex-1"
+              style={{ padding: '10px 16px' }}
             >
-              Save
+              <Check className="h-4 w-4" />
+              <span>Save</span>
             </button>
             <button
               onClick={() => setIsEditing(false)}
-              className="flex-1 px-2 py-1.5 text-sm bg-slate-800 text-slate-300 border border-slate-700 rounded transition hover:bg-slate-700"
+              className="btn-ghost flex-1"
+              style={{ padding: '10px 16px' }}
             >
-              Cancel
+              <X className="h-4 w-4" />
+              <span>Cancel</span>
             </button>
           </div>
         </div>
@@ -134,26 +164,75 @@ export function NodeInspector() {
   }
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-2.5">
-      <div className="space-y-1.5 text-xs text-slate-100">
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full" style={{ background: node.color }} />
-          <span className="font-semibold text-sm">{node.label}</span>
+    <div
+      className="rounded-xl p-5 animate-fade-in"
+      style={{
+        background: 'var(--color-surface-1)',
+        border: '1px solid var(--color-border)',
+        animationDuration: '0.2s',
+      }}
+    >
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <div
+            className="h-3 w-3 rounded-full"
+            style={{
+              background: node.color,
+              boxShadow: `0 0 0 1px var(--color-surface-1), 0 0 0 3px ${node.color}40`,
+            }}
+          />
+          <h3
+            className="font-display text-base flex-1"
+            style={{ color: 'var(--color-text-primary)' }}
+          >
+            {node.label}
+          </h3>
         </div>
-        {node.detail ? <p className="text-slate-400 text-xs">{node.detail}</p> : null}
-        <p className="text-xs uppercase tracking-wide text-slate-500">{node.kind}</p>
-        <div className="flex gap-1.5 mt-2">
+
+        {node.detail && (
+          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+            {node.detail}
+          </p>
+        )}
+
+        <div
+          className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium uppercase tracking-wider"
+          style={{
+            background: 'var(--color-surface-3)',
+            color: 'var(--color-text-muted)',
+          }}
+        >
+          {node.kind}
+        </div>
+
+        {/* Divider */}
+        <div style={{ height: '1px', background: 'var(--color-border)' }} />
+
+        <div className="flex gap-2">
           <button
             onClick={handleEdit}
-            className="flex-1 px-1.5 py-1 text-xs bg-slate-800/50 text-slate-300 border border-slate-700 rounded transition hover:bg-slate-700 hover:text-slate-100"
+            className="btn-ghost flex-1"
+            style={{ padding: '8px 12px', fontSize: '13px' }}
           >
-            Edit
+            <Pencil className="h-3.5 w-3.5" />
+            <span>Edit</span>
           </button>
           <button
             onClick={() => deleteNode(node.id)}
-            className="flex-1 px-1.5 py-1 text-xs bg-red-500/10 text-red-400 border border-red-500/30 rounded transition hover:bg-red-500/20 flex items-center justify-center gap-1"
+            className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-200"
+            style={{
+              background: 'rgba(192, 57, 43, 0.1)',
+              color: '#e74c3c',
+              border: '1px solid rgba(192, 57, 43, 0.2)',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.background = 'rgba(192, 57, 43, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.background = 'rgba(192, 57, 43, 0.1)';
+            }}
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-3.5 w-3.5" />
             <span>Delete</span>
           </button>
         </div>

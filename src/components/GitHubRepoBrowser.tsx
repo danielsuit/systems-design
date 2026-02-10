@@ -1,18 +1,17 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import { 
   Folder, FolderOpen, Github, GitBranch, FileText, 
-  Code2, FileJson, FileCode, FileX, Settings, Package,
-  Type, Database, Image as ImageIcon
+  Code2, FileJson, FileCode, Settings, Package,
+  Type, Database, Image as ImageIcon, Loader2
 } from "lucide-react";
 import { FileNode, mockRepoTrees } from "../data/mockRepoTrees";
 import { useDesignStore } from "../store/designStore";
 
 function getFileIcon(filename: string) {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
-  const iconProps = { className: "h-4 w-4 text-slate-500" };
+  const iconProps = { className: "h-4 w-4", style: { color: 'var(--color-text-ghost)' } };
 
   const iconMap: Record<string, JSX.Element> = {
-    // Web
     tsx: <Code2 {...iconProps} />,
     ts: <Type {...iconProps} />,
     jsx: <Code2 {...iconProps} />,
@@ -21,31 +20,23 @@ function getFileIcon(filename: string) {
     css: <Code2 {...iconProps} />,
     scss: <Code2 {...iconProps} />,
     less: <Code2 {...iconProps} />,
-    // Data
     json: <FileJson {...iconProps} />,
     xml: <FileCode {...iconProps} />,
     yaml: <Settings {...iconProps} />,
     yml: <Settings {...iconProps} />,
     toml: <Settings {...iconProps} />,
-    // Config
     env: <Settings {...iconProps} />,
     config: <Settings {...iconProps} />,
     conf: <Settings {...iconProps} />,
-    // Package managers
     package: <Package {...iconProps} />,
     lock: <Package {...iconProps} />,
-    // Docs
     md: <FileText {...iconProps} />,
     markdown: <FileText {...iconProps} />,
     txt: <FileText {...iconProps} />,
-    // Python
     py: <Code2 {...iconProps} />,
-    // Java
     java: <Code2 {...iconProps} />,
-    // Database
     sql: <Database {...iconProps} />,
     db: <Database {...iconProps} />,
-    // Images
     png: <ImageIcon {...iconProps} />,
     jpg: <ImageIcon {...iconProps} />,
     jpeg: <ImageIcon {...iconProps} />,
@@ -58,11 +49,23 @@ function getFileIcon(filename: string) {
 
 function TreeNode({ node, depth = 0 }: { node: FileNode; depth?: number }) {
   const [open, setOpen] = useState(depth < 1);
-  const padding = 12 * depth;
+  const padding = 16 * depth;
 
   if (node.type === "file") {
     return (
-      <div className="flex items-center gap-2 text-sm text-slate-300" style={{ paddingLeft: padding }}>
+      <div
+        className="flex items-center gap-2.5 py-1.5 text-sm rounded-md px-2 transition-colors duration-150"
+        style={{
+          paddingLeft: padding + 8,
+          color: 'var(--color-text-secondary)',
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLElement).style.background = 'var(--color-surface-2)';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.background = 'transparent';
+        }}
+      >
         {getFileIcon(node.name)}
         <span>{node.name}</span>
       </div>
@@ -70,16 +73,27 @@ function TreeNode({ node, depth = 0 }: { node: FileNode; depth?: number }) {
   }
 
   return (
-    <div className="space-y-1" style={{ paddingLeft: padding }}>
+    <div style={{ paddingLeft: padding }}>
       <button
-        className="flex w-full items-center gap-2 text-left text-sm text-slate-200 hover:text-accent"
+        className="flex w-full items-center gap-2.5 text-left text-sm py-1.5 px-2 rounded-md transition-colors duration-150"
+        style={{ color: 'var(--color-text-primary)' }}
         onClick={() => setOpen((v) => !v)}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLElement).style.background = 'var(--color-surface-2)';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.background = 'transparent';
+        }}
       >
-        {open ? <FolderOpen className="h-4 w-4 text-accent" /> : <Folder className="h-4 w-4 text-slate-500" />}
-        <span>{node.name}</span>
+        {open ? (
+          <FolderOpen className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+        ) : (
+          <Folder className="h-4 w-4" style={{ color: 'var(--color-text-ghost)' }} />
+        )}
+        <span className="font-medium">{node.name}</span>
       </button>
       {open && node.children ? (
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           {node.children.map((child) => (
             <TreeNode key={child.path} node={child} depth={depth + 1} />
           ))}
@@ -129,7 +143,6 @@ export function GitHubRepoBrowser() {
 
       const data = await response.json() as { tree: Array<{ path: string; type: string }> };
       
-      // Convert flat API response to tree structure
       const treeMap = new Map<string, FileNode>();
       const rootNodes: FileNode[] = [];
 
@@ -189,64 +202,134 @@ export function GitHubRepoBrowser() {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 text-sm text-slate-300">
-        <Github className="h-4 w-4" />
-        <span>GitHub file tree</span>
+    <div className="space-y-5">
+      {/* Section header */}
+      <div className="flex items-center gap-3">
+        <div
+          className="flex h-8 w-8 items-center justify-center rounded-lg"
+          style={{ background: 'var(--color-surface-2)' }}
+        >
+          <Github className="h-4 w-4" style={{ color: 'var(--color-text-secondary)' }} />
+        </div>
+        <div>
+          <h2 className="font-display text-base" style={{ color: 'var(--color-text-primary)' }}>
+            Repository
+          </h2>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            Browse a GitHub file tree
+          </p>
+        </div>
       </div>
-      <form onSubmit={handleSubmit} className="space-y-2">
-        <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
-          <span className="text-slate-500">repo:</span>
+
+      <form onSubmit={handleSubmit} className="space-y-3">
+        {/* Repo input */}
+        <div
+          className="flex items-center gap-2 rounded-lg px-4 py-3"
+          style={{
+            background: 'var(--color-surface-1)',
+            border: '1px solid var(--color-border)',
+          }}
+        >
+          <span className="text-xs font-medium" style={{ color: 'var(--color-text-ghost)' }}>
+            repo
+          </span>
           <input
-            className="flex-1 bg-transparent text-sm text-slate-100 outline-none"
+            className="flex-1 bg-transparent text-sm outline-none"
+            style={{ color: 'var(--color-text-primary)' }}
             value={repo}
             onChange={(e) => setRepo(e.target.value)}
             placeholder="owner/repo"
           />
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
-          <GitBranch className="h-4 w-4 text-slate-500" />
+
+        {/* Branch input */}
+        <div
+          className="flex items-center gap-2 rounded-lg px-4 py-3"
+          style={{
+            background: 'var(--color-surface-1)',
+            border: '1px solid var(--color-border)',
+          }}
+        >
+          <GitBranch className="h-4 w-4" style={{ color: 'var(--color-text-ghost)' }} />
           <input
-            className="flex-1 bg-transparent text-sm text-slate-100 outline-none"
+            className="flex-1 bg-transparent text-sm outline-none"
+            style={{ color: 'var(--color-text-primary)' }}
             value={branch}
             onChange={(e) => setBranch(e.target.value)}
             placeholder="main"
           />
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
-          <span className="text-slate-500">token:</span>
+
+        {/* Token input */}
+        <div
+          className="flex items-center gap-2 rounded-lg px-4 py-3"
+          style={{
+            background: 'var(--color-surface-1)',
+            border: '1px solid var(--color-border)',
+          }}
+        >
+          <span className="text-xs font-medium" style={{ color: 'var(--color-text-ghost)' }}>
+            token
+          </span>
           <input
-            className="flex-1 bg-transparent text-sm text-slate-100 outline-none"
+            className="flex-1 bg-transparent text-sm outline-none"
+            style={{ color: 'var(--color-text-primary)' }}
             type="password"
             value={token}
             onChange={(e) => setToken(e.target.value)}
-            placeholder="GitHub token (optional)"
+            placeholder="optional"
           />
         </div>
+
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-gradient-to-r from-accent to-accent2 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
-          {loading ? "Loading..." : "Load tree"}
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Loading...</span>
+            </>
+          ) : (
+            <span>Load tree</span>
+          )}
         </button>
       </form>
 
+      {/* Error state */}
       {error && (
-        <div className="rounded-lg bg-red-900/20 border border-red-800/50 p-3 text-sm text-red-300">
+        <div
+          className="rounded-lg p-3 text-sm"
+          style={{
+            background: 'rgba(192, 57, 43, 0.08)',
+            border: '1px solid rgba(192, 57, 43, 0.2)',
+            color: '#e74c3c',
+          }}
+        >
           {error}
         </div>
       )}
 
-      <div className="max-h-64 overflow-auto rounded-lg border border-slate-800 bg-slate-900/70 p-3">
+      {/* Tree view */}
+      <div
+        className="max-h-64 overflow-auto rounded-xl p-3"
+        style={{
+          background: 'var(--color-surface-1)',
+          border: '1px solid var(--color-border)',
+          scrollbarWidth: 'thin',
+        }}
+      >
         {tree && tree.length > 0 ? (
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {tree.map((node) => (
               <TreeNode key={node.path} node={node} />
             ))}
           </div>
         ) : (
-          <p className="text-sm text-slate-500">{loading ? "Loading..." : "No data loaded yet."}</p>
+          <p className="text-sm py-4 text-center" style={{ color: 'var(--color-text-ghost)' }}>
+            {loading ? "Loading..." : "No data loaded yet"}
+          </p>
         )}
       </div>
     </div>

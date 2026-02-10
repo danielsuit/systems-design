@@ -1,4 +1,4 @@
-import { Palette, PlusCircle, ChevronRight, ChevronDown, Trash2 } from "lucide-react";
+import { Palette, PlusCircle, ChevronRight, ChevronDown, X } from "lucide-react";
 import { useDesignStore, NodeKind } from "../store/designStore";
 import { useState } from "react";
 
@@ -158,47 +158,72 @@ export function NodePalette() {
   };
 
   return (
-    <div className="space-y-2 max-h-[600px] overflow-y-auto">
-      <div className="flex items-center justify-between px-2 py-1 sticky top-0 bg-slate-950">
-        <div className="flex items-center gap-2 text-sm text-slate-400">
-          <Palette className="h-4 w-4" />
-          <span className="font-medium">Node library</span>
+    <div className="space-y-4 max-h-[600px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+      {/* Section Header */}
+      <div
+        className="flex items-center justify-between sticky top-0 py-2 px-1"
+        style={{ background: 'var(--color-bg)', zIndex: 5 }}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-lg"
+            style={{ background: 'var(--color-accent-subtle)' }}
+          >
+            <Palette className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+          </div>
+          <div>
+            <h2 className="font-display text-base" style={{ color: 'var(--color-text-primary)' }}>
+              Node Library
+            </h2>
+          </div>
         </div>
         <button
           onClick={() => setShowAddNodeForm(!showAddNodeForm)}
-          className="flex items-center gap-1 px-2 py-1 text-xs rounded transition bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20"
+          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-200"
+          style={{
+            background: showAddNodeForm ? 'var(--color-accent-muted)' : 'var(--color-accent-subtle)',
+            color: 'var(--color-accent)',
+            border: '1px solid transparent',
+          }}
         >
-          <PlusCircle className="h-3.5 w-3.5" />
-          <span>Add Custom Node</span>
           {showAddNodeForm ? (
-            <ChevronDown className="h-3 w-3" />
+            <X className="h-3.5 w-3.5" />
           ) : (
-            <ChevronRight className="h-3 w-3" />
+            <PlusCircle className="h-3.5 w-3.5" />
           )}
+          <span>{showAddNodeForm ? "Close" : "Custom"}</span>
         </button>
       </div>
 
-      {/* Add Node Form (Dropdown) */}
+      {/* Add Node Form */}
       {showAddNodeForm && (
-        <div className="px-3 py-3 border border-slate-800 rounded-lg bg-slate-900/50 space-y-2">
+        <div
+          className="rounded-xl p-4 space-y-3 animate-fade-up"
+          style={{
+            background: 'var(--color-surface-1)',
+            border: '1px solid var(--color-border)',
+            animationDuration: '0.3s',
+          }}
+        >
           <input
             type="text"
             value={customNodeName}
             onChange={(e) => setCustomNodeName(e.target.value)}
             placeholder="Node name..."
-            className="w-full px-2 py-1.5 text-sm bg-slate-800/50 border border-slate-700 rounded text-slate-100 placeholder-slate-500 outline-none focus:border-accent/60 transition"
+            className="input-field"
           />
           <input
             type="text"
             value={customNodeDetail}
             onChange={(e) => setCustomNodeDetail(e.target.value)}
-            placeholder="Detail/description..."
-            className="w-full px-2 py-1.5 text-sm bg-slate-800/50 border border-slate-700 rounded text-slate-100 placeholder-slate-500 outline-none focus:border-accent/60 transition"
+            placeholder="Detail / description..."
+            className="input-field"
           />
           <select
             value={customNodeType}
             onChange={(e) => setCustomNodeType(e.target.value as NodeKind)}
-            className="w-full px-2 py-1.5 text-sm bg-slate-800/50 border border-slate-700 rounded text-slate-100 outline-none focus:border-accent/60 transition"
+            className="input-field"
+            style={{ cursor: 'pointer' }}
           >
             {nodeKinds.map((kind) => (
               <option key={kind} value={kind}>
@@ -206,24 +231,35 @@ export function NodePalette() {
               </option>
             ))}
           </select>
-          <div className="flex gap-1 flex-wrap">
-            {colorPresets.map((color) => (
-              <button
-                key={color.value}
-                onClick={() => setSelectedColor(color.value)}
-                className={`w-6 h-6 rounded transition border-2 ${
-                  selectedColor === color.value ? "border-accent" : "border-slate-600 hover:border-slate-500"
-                }`}
-                style={{ backgroundColor: color.value }}
-                title={color.name}
-              />
-            ))}
+
+          {/* Color picker */}
+          <div>
+            <p className="overline mb-2">Color</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {colorPresets.map((color) => (
+                <button
+                  key={color.value}
+                  onClick={() => setSelectedColor(color.value)}
+                  className="w-7 h-7 rounded-lg transition-all duration-150"
+                  style={{
+                    backgroundColor: color.value,
+                    boxShadow: selectedColor === color.value
+                      ? `0 0 0 2px var(--color-bg), 0 0 0 4px ${color.value}`
+                      : 'none',
+                    transform: selectedColor === color.value ? 'scale(1.1)' : 'scale(1)',
+                  }}
+                  title={color.name}
+                />
+              ))}
+            </div>
           </div>
-          <div className="flex gap-2">
+
+          <div className="flex gap-2 pt-1">
             <button
               onClick={createCustomNode}
               disabled={!customNodeName.trim()}
-              className="flex-1 px-2 py-1.5 text-sm bg-accent/10 text-accent border border-accent/30 rounded transition hover:bg-accent/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary flex-1 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
+              style={{ padding: '10px 16px' }}
             >
               Create Node
             </button>
@@ -235,7 +271,8 @@ export function NodePalette() {
                 setCustomNodeType("service");
                 setSelectedColor(colorPresets[0].value);
               }}
-              className="flex-1 px-2 py-1.5 text-sm bg-slate-800/50 text-slate-400 border border-slate-700 rounded transition hover:bg-slate-800 hover:text-slate-300"
+              className="btn-ghost flex-1"
+              style={{ padding: '10px 16px' }}
             >
               Cancel
             </button>
@@ -243,77 +280,115 @@ export function NodePalette() {
         </div>
       )}
 
+      {/* Category Tree */}
+      <div className="space-y-1">
+        {Object.entries(categories).map(([key, category]) => {
+          const isExpanded = expandedCategories.has(key as NodeCategory);
+          return (
+            <div key={key}>
+              <button
+                onClick={() => toggleCategory(key as NodeCategory)}
+                className="w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-lg transition-all duration-150"
+                style={{
+                  color: isExpanded ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                  background: isExpanded ? 'var(--color-surface-1)' : 'transparent',
+                }}
+              >
+                {isExpanded ? (
+                  <ChevronDown className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'var(--color-accent)' }} />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'var(--color-text-ghost)' }} />
+                )}
+                <span className="font-medium">{category.label}</span>
+                <span
+                  className="ml-auto text-xs tabular-nums"
+                  style={{ color: 'var(--color-text-ghost)' }}
+                >
+                  {category.nodes.length}
+                </span>
+              </button>
 
-      {/* Category Nodes */}
-      {Object.entries(categories).map(([key, category]) => {
-        const isExpanded = expandedCategories.has(key as NodeCategory);
-        return (
-          <div key={key}>
-            <button
-              onClick={() => toggleCategory(key as NodeCategory)}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900/50 hover:text-slate-100 transition rounded"
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4 text-slate-500" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-slate-500" />
-              )}
-              <span className="font-medium">{category.label}</span>
-            </button>
-
-            {isExpanded && (
-              <div className="pl-4 space-y-1">
-                {category.nodes.map((item) => {
-                  const nodeKey = `${key}-${item.label}`;
-                  const nodeIsExpanded = expandedNodes.has(nodeKey);
-                  return (
-                    <div key={nodeKey}>
-                      <button
-                        onClick={() => toggleNode(nodeKey)}
-                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm rounded transition hover:bg-slate-800/60 text-slate-400 hover:text-slate-100"
-                      >
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          {nodeIsExpanded ? (
-                            <ChevronDown className="h-4 w-4 text-slate-500 flex-shrink-0" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 text-slate-500 flex-shrink-0" />
-                          )}
-                          <div className="text-left min-w-0">
-                            <p className="text-slate-50 truncate">{item.label}</p>
-                            <p className="text-xs text-slate-500 truncate">{item.detail}</p>
+              {isExpanded && (
+                <div className="ml-3 pl-3 space-y-0.5 mt-0.5" style={{ borderLeft: '1px solid var(--color-border)' }}>
+                  {category.nodes.map((item) => {
+                    const nodeKey = `${key}-${item.label}`;
+                    const nodeIsExpanded = expandedNodes.has(nodeKey);
+                    return (
+                      <div key={nodeKey}>
+                        <button
+                          onClick={() => toggleNode(nodeKey)}
+                          className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-lg transition-all duration-150 group"
+                          style={{
+                            color: nodeIsExpanded ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                            background: nodeIsExpanded ? 'var(--color-surface-2)' : 'transparent',
+                          }}
+                        >
+                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                            <div
+                              className="w-2 h-2 rounded-full flex-shrink-0"
+                              style={{ background: item.color }}
+                            />
+                            <div className="text-left min-w-0">
+                              <p className="truncate text-sm">{item.label}</p>
+                              <p
+                                className="text-xs truncate"
+                                style={{ color: 'var(--color-text-ghost)' }}
+                              >
+                                {item.detail}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      </button>
+                          {nodeIsExpanded ? (
+                            <ChevronDown className="h-3 w-3 flex-shrink-0" style={{ color: 'var(--color-text-ghost)' }} />
+                          ) : (
+                            <ChevronRight className="h-3 w-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--color-text-ghost)' }} />
+                          )}
+                        </button>
 
-                      {nodeIsExpanded && (
-                        <div className="pl-4 space-y-1">
-                          {item.services.map((service) => (
-                            <button
-                              key={service}
-                              onClick={() =>
-                                addNode({
-                                  label: service,
-                                  kind: item.kind,
-                                  color: item.color,
-                                  detail: item.label,
-                                })
-                              }
-                              className="w-full group flex items-center justify-between gap-2 px-3 py-2 text-sm rounded transition hover:bg-slate-800/60 text-slate-500 hover:text-slate-50"
-                            >
-                              <span className="truncate">{service}</span>
-                              <PlusCircle className="h-4 w-4 text-slate-700 group-hover:text-accent flex-shrink-0 opacity-0 group-hover:opacity-100 transition" />
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
+                        {nodeIsExpanded && (
+                          <div className="ml-4 pl-3 space-y-0.5 py-1" style={{ borderLeft: '1px solid var(--color-border-subtle)' }}>
+                            {item.services.map((service) => (
+                              <button
+                                key={service}
+                                onClick={() =>
+                                  addNode({
+                                    label: service,
+                                    kind: item.kind,
+                                    color: item.color,
+                                    detail: item.label,
+                                  })
+                                }
+                                className="w-full group/service flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-lg transition-all duration-150"
+                                style={{
+                                  color: 'var(--color-text-muted)',
+                                }}
+                                onMouseEnter={(e) => {
+                                  (e.currentTarget as HTMLElement).style.background = 'var(--color-surface-2)';
+                                  (e.currentTarget as HTMLElement).style.color = 'var(--color-text-primary)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  (e.currentTarget as HTMLElement).style.background = 'transparent';
+                                  (e.currentTarget as HTMLElement).style.color = 'var(--color-text-muted)';
+                                }}
+                              >
+                                <span className="truncate">{service}</span>
+                                <PlusCircle
+                                  className="h-3.5 w-3.5 flex-shrink-0 opacity-0 group-hover/service:opacity-100 transition-opacity duration-150"
+                                  style={{ color: 'var(--color-accent)' }}
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
