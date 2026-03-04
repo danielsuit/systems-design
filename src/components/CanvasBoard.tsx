@@ -21,14 +21,20 @@ interface NodeCardProps {
   onMeasure?: (id: string, size: { w: number; h: number }) => void;
   zoom?: number;
   panOffset?: { x: number; y: number };
+  isMultiSelected?: boolean;
+  allNodes?: NodeModel[];
+  selectedNodeIds?: string[];
 }
 
-function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasure, zoom = 1, panOffset = { x: 0, y: 0 } }: NodeCardProps) {
+function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasure, zoom = 1, panOffset = { x: 0, y: 0 }, isMultiSelected, allNodes, selectedNodeIds }: NodeCardProps) {
   const updateNodePosition = useDesignStore((s) => s.updateNodePosition);
+  const updateNodePositions = useDesignStore((s) => s.updateNodePositions);
   const selectNode = useDesignStore((s) => s.selectNode);
+  const toggleSelectNode = useDesignStore((s) => s.toggleSelectNode);
   const selectedId = useDesignStore((s) => s.selectedNodeId);
   const [drag, setDrag] = useState<DragState | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const dragOriginsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   useLayoutEffect(() => {
     if (!cardRef.current || !onMeasure) return;
@@ -50,21 +56,25 @@ function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasu
       if (distance < 5) return;
       
       const containerRect = container.getBoundingClientRect();
-      const cardRect = card.getBoundingClientRect();
       
-      const nodeWidth = cardRect.width / drag.zoom;
-      const nodeHeight = cardRect.height / drag.zoom;
-      
-      let x = (e.clientX - containerRect.left - drag.offsetX - panOffset.x) / drag.zoom;
-      let y = (e.clientY - containerRect.top - drag.offsetY - panOffset.y) / drag.zoom;
-      
-      const maxX = (containerRect.width / drag.zoom) - nodeWidth;
-      const maxY = (containerRect.height / drag.zoom) - nodeHeight;
-      
-      x = Math.max(0, Math.min(x, maxX));
-      y = Math.max(0, Math.min(y, maxY));
-      
-      updateNodePosition(drag.id, x, y);
+      const dx = (e.clientX - drag.startX) / drag.zoom;
+      const dy = (e.clientY - drag.startY) / drag.zoom;
+
+      const isGroupDrag = isMultiSelected && selectedNodeIds && selectedNodeIds.length > 1;
+
+      if (isGroupDrag) {
+        const updates = selectedNodeIds!.map((nid) => {
+          const origin = dragOriginsRef.current.get(nid);
+          if (!origin) return { id: nid, x: 0, y: 0 };
+          return { id: nid, x: origin.x + dx, y: origin.y + dy };
+        });
+        updateNodePositions(updates);
+      } else {
+        const x = (e.clientX - containerRect.left - drag.offsetX - panOffset.x) / drag.zoom;
+        const y = (e.clientY - containerRect.top - drag.offsetY - panOffset.y) / drag.zoom;
+        
+        updateNodePosition(drag.id, x, y);
+      }
       
       if (!drag.hasMoved) {
         setDrag({ ...drag, hasMoved: true });
@@ -81,9 +91,9 @@ function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasu
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", stop);
     };
-  }, [drag, updateNodePosition, zoom, panOffset]);
+  }, [drag, updateNodePosition, updateNodePositions, zoom, panOffset, isMultiSelected, selectedNodeIds]);
 
-  const isSelected = selectedId === node.id;
+  const isSelected = selectedId === node.id || !!isMultiSelected;
   const isSource = connectSourceId === node.id;
 
   return (
@@ -98,6 +108,26 @@ function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasu
           onConnectTarget(node.id);
           return;
         }
+
+        if (e.shiftKey) {
+          toggleSelectNode(node.id);
+        } else if (!isMultiSelected) {
+          selectNode(node.id);
+        }
+
+        // Store initial positions of all selected nodes for group drag
+        const origins = new Map<string, { x: number; y: number }>();
+        const ids = e.shiftKey
+          ? (selectedNodeIds?.includes(node.id) ? selectedNodeIds : [...(selectedNodeIds || []), node.id])
+          : (isMultiSelected ? selectedNodeIds || [] : [node.id]);
+        if (allNodes) {
+          for (const nid of ids) {
+            const n = allNodes.find((nd) => nd.id === nid);
+            if (n) origins.set(nid, { x: n.x, y: n.y });
+          }
+        }
+        dragOriginsRef.current = origins;
+
         setDrag({ 
           id: node.id, 
           offsetX: e.clientX - rect.left, 
@@ -107,7 +137,6 @@ function NodeCard({ node, connectMode, connectSourceId, onConnectTarget, onMeasu
           startY: e.clientY,
           hasMoved: false
         });
-        selectNode(node.id);
       }}
       className={classNames(
         "absolute w-48 select-none rounded-xl p-4 transition-shadow duration-200",
@@ -176,6 +205,8 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom, onZoom
   const addConnection = useDesignStore((s) => s.addConnection);
   const deleteConnection = useDesignStore((s) => s.deleteConnection);
   const selectNode = useDesignStore((s) => s.selectNode);
+  const clearSelection = useDesignStore((s) => s.clearSelection);
+  const selectedNodeIds = useDesignStore((s) => s.selectedNodeIds);
   const [hint, setHint] = useState(true);
   const [connectMode, setConnectMode] = useState(false);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
@@ -293,7 +324,7 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom, onZoom
         className="relative h-full cursor-grab active:cursor-grabbing" 
         onClick={(e) => {
           if (e.target === containerRef.current) {
-            selectNode(undefined);
+            clearSelection();
           }
         }}
         onPointerDown={(e) => {
@@ -420,6 +451,9 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom, onZoom
             onMeasure={registerMeasure}
             zoom={zoom}
             panOffset={panOffset}
+            isMultiSelected={selectedNodeIds.includes(node.id)}
+            allNodes={nodes}
+            selectedNodeIds={selectedNodeIds}
           />
         ))}
 
