@@ -28,11 +28,12 @@ export default function CanvasPage() {
   };
 
   return (
-    <div className="noise-bg min-h-screen" style={{ background: 'var(--color-bg)' }}>
+    <div className="min-h-screen" style={{ background: '#1a1714' }}>
       {/* Header */}
       <header
-        className="glass sticky top-0 border-b"
-        style={{ borderColor: 'var(--color-border)', zIndex: 30 }}
+        id="site-nav"
+        className="sticky top-0 border-b"
+        style={{ borderColor: 'var(--color-border)', background: '#211e1a', zIndex: 50 }}
       >
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
@@ -91,16 +92,27 @@ export default function CanvasPage() {
           {/* Sidebar */}
           {sidebarOpen && (
             <aside
-              className="hidden lg:flex flex-col gap-4 overflow-y-auto min-h-0 opacity-0 animate-slide-in"
+              className="hidden lg:flex flex-col min-h-0 opacity-0 animate-slide-in"
               style={{
                 animationDelay: '200ms',
                 animationFillMode: 'forwards',
-                scrollbarWidth: 'thin',
+                maxHeight: '100%',
               }}
             >
-              <NodeInspector />
-              <NodePalette />
-              <GitHubRepoBrowser />
+              <div
+                className="flex-1 flex flex-col gap-4 overflow-y-auto min-h-0"
+                style={{ scrollbarWidth: 'thin' }}
+              >
+                <div className="flex-shrink-0">
+                  <NodeInspector />
+                </div>
+                <div className="flex-shrink-0">
+                  <NodePalette />
+                </div>
+              </div>
+              <div className="flex-shrink-0 border-t pt-4 mt-4" style={{ borderColor: 'var(--color-border)' }}>
+                <GitHubRepoBrowser />
+              </div>
             </aside>
           )}
         </div>

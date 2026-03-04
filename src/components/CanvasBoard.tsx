@@ -278,44 +278,14 @@ export function CanvasBoard({ zoom = 1, onZoomIn, onZoomOut, onResetZoom, onZoom
         border: '1px solid var(--color-border)',
       }}
     >
-      {/* Ambient background */}
-      <div 
-        className="absolute animate-pulse-soft pointer-events-none" 
-        style={{ 
-          left: '-100%',
-          top: '-100%',
-          width: '300%',
-          height: '300%',
-          background: 'radial-gradient(circle at 30% 30%, rgba(212,134,78,0.04), transparent 50%)',
-          transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
-        }}
-      />
-      <div 
-        className="absolute animate-pulse-soft pointer-events-none" 
-        style={{ 
-          left: '-100%',
-          top: '-100%',
-          width: '300%',
-          height: '300%',
-          background: 'radial-gradient(circle at 70% 60%, rgba(212,134,78,0.03), transparent 40%)',
-          transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
-          animationDelay: '1.5s',
-        }}
-      />
       {/* Grid pattern */}
-      <div 
-        className="absolute opacity-20 pointer-events-none" 
-        style={{ 
-          left: '-100%',
-          top: '-100%',
-          width: '300%',
-          height: '300%',
-          backgroundImage: `
-            radial-gradient(circle, rgba(212,134,78,0.15) 1px, transparent 1px)
-          `,
-          backgroundSize: '48px 48px',
-          transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
-        }} 
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: 'radial-gradient(circle, rgba(212,134,78,0.12) 1px, transparent 1px)',
+          backgroundSize: `${48 * zoom}px ${48 * zoom}px`,
+          backgroundPosition: `${panOffset.x % (48 * zoom)}px ${panOffset.y % (48 * zoom)}px`,
+        }}
       />
 
       <div 
