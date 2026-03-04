@@ -41,16 +41,20 @@ interface DesignState {
   nodes: NodeModel[];
   connections: ConnectionModel[];
   selectedNodeId?: string;
+  selectedNodeIds: string[];
   activeTemplateId: string;
   repoLink: string;
   setTemplate: (templateId: string) => void;
   addNode: (partial: Omit<NodeModel, "id" | "x" | "y">) => void;
   updateNodePosition: (id: string, x: number, y: number) => void;
+  updateNodePositions: (updates: { id: string; x: number; y: number }[]) => void;
   updateNode: (id: string, updates: Partial<Omit<NodeModel, "id" | "x" | "y">>) => void;
   deleteNode: (id: string) => void;
   addConnection: (from: string, to: string) => void;
   deleteConnection: (connectionId: string) => void;
   selectNode: (id?: string) => void;
+  toggleSelectNode: (id: string) => void;
+  clearSelection: () => void;
   setRepoLink: (link: string) => void;
 }
 
@@ -63,6 +67,7 @@ export const useDesignStore = create<DesignState>()(
       connections: [],
       activeTemplateId: defaultTemplateId,
       selectedNodeId: undefined,
+      selectedNodeIds: [],
       repoLink: "danielsuit/systems-design",
       setTemplate: (templateId) => {
         const tpl = templates.find((t) => t.id === templateId);
@@ -71,6 +76,7 @@ export const useDesignStore = create<DesignState>()(
           nodes: tpl ? tpl.nodes.map((n) => ({ ...n })) : [],
           connections: tpl?.connections ? tpl.connections.map((c) => ({ ...c })) : [],
           selectedNodeId: undefined,
+          selectedNodeIds: [],
         });
       },
       addNode: (partial) =>
@@ -94,6 +100,16 @@ export const useDesignStore = create<DesignState>()(
             node.id === id ? { ...node, x, y } : node
           ),
         })),
+      updateNodePositions: (updates) =>
+        set((state) => {
+          const map = new Map(updates.map((u) => [u.id, u]));
+          return {
+            nodes: state.nodes.map((node) => {
+              const u = map.get(node.id);
+              return u ? { ...node, x: u.x, y: u.y } : node;
+            }),
+          };
+        }),
       updateNode: (id, updates) =>
         set((state) => ({
           nodes: state.nodes.map((node) =>
@@ -105,6 +121,7 @@ export const useDesignStore = create<DesignState>()(
           nodes: state.nodes.filter((node) => node.id !== id),
           connections: state.connections.filter((c) => c.from !== id && c.to !== id),
           selectedNodeId: state.selectedNodeId === id ? undefined : state.selectedNodeId,
+          selectedNodeIds: state.selectedNodeIds.filter((nid) => nid !== id),
         })),
       addConnection: (from, to) =>
         set((state) => {
@@ -122,7 +139,14 @@ export const useDesignStore = create<DesignState>()(
         set((state) => ({
           connections: state.connections.filter((c) => c.id !== connectionId),
         })),
-      selectNode: (id) => set({ selectedNodeId: id }),
+      selectNode: (id) => set({ selectedNodeId: id, selectedNodeIds: id ? [id] : [] }),
+      toggleSelectNode: (id) =>
+        set((state) => {
+          const ids = state.selectedNodeIds;
+          const next = ids.includes(id) ? ids.filter((nid) => nid !== id) : [...ids, id];
+          return { selectedNodeIds: next, selectedNodeId: next.length > 0 ? next[next.length - 1] : undefined };
+        }),
+      clearSelection: () => set({ selectedNodeId: undefined, selectedNodeIds: [] }),
       setRepoLink: (link) => set({ repoLink: link }),
     }),
     {
