@@ -54,13 +54,13 @@ interface DesignState {
   setRepoLink: (link: string) => void;
 }
 
-const defaultTemplateId = templates[0]?.id ?? "blank";
+const defaultTemplateId = "";
 
 export const useDesignStore = create<DesignState>()(
   persist(
     (set) => ({
-      nodes: templates[0]?.nodes ?? [],
-      connections: templates[0]?.connections ?? [],
+      nodes: [],
+      connections: [],
       activeTemplateId: defaultTemplateId,
       selectedNodeId: undefined,
       repoLink: "danielsuit/systems-design",
@@ -127,6 +127,12 @@ export const useDesignStore = create<DesignState>()(
     }),
     {
       name: "design-store",
+      version: 2,
+      partialize: (state) => ({
+        nodes: state.nodes,
+        connections: state.connections,
+        repoLink: state.repoLink,
+      }),
     }
   )
 );

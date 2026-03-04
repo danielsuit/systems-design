@@ -1,8 +1,4 @@
-import { useNavigate } from "react-router-dom";
 import { TemplateGallery } from "../components/TemplateGallery";
-import { NodePalette } from "../components/NodePalette";
-import { GitHubRepoBrowser } from "../components/GitHubRepoBrowser";
-import { ArrowRight } from "lucide-react";
 
 function SystemsDesignLogo() {
   return (
@@ -28,8 +24,6 @@ function SystemsDesignLogo() {
 }
 
 export default function HomePage() {
-  const navigate = useNavigate();
-
   return (
     <div className="noise-bg min-h-screen" style={{ background: 'var(--color-bg)' }}>
       {/* Decorative background shapes */}
@@ -65,7 +59,7 @@ export default function HomePage() {
 
       <div className="relative" style={{ zIndex: 1 }}>
         {/* Header */}
-        <header className="glass sticky top-0 border-b" style={{ borderColor: 'var(--color-border)' }}>
+        <header id="site-nav" className="sticky top-0 border-b" style={{ borderColor: 'var(--color-border)', background: '#211e1a', zIndex: 50 }}>
           <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 lg:px-8">
             <div className="flex items-center gap-3">
               <SystemsDesignLogo />
@@ -78,15 +72,6 @@ export default function HomePage() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => navigate("/canvas")}
-              className="btn-primary group"
-            >
-              <span>Open Canvas</span>
-              <ArrowRight
-                className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5"
-              />
-            </button>
           </div>
         </header>
 
@@ -126,23 +111,10 @@ export default function HomePage() {
           />
         </div>
 
-        {/* Main content — asymmetric 2-column layout */}
+        {/* Main content */}
         <main className="mx-auto max-w-6xl px-6 py-12 lg:px-8">
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr,380px]">
-            {/* Left column — Templates (larger, focal) */}
-            <div className="opacity-0 animate-fade-up stagger-2">
-              <TemplateGallery />
-            </div>
-
-            {/* Right column — Stacked panels */}
-            <div className="flex flex-col gap-8">
-              <div className="opacity-0 animate-fade-up stagger-3">
-                <NodePalette />
-              </div>
-              <div className="opacity-0 animate-fade-up stagger-4">
-                <GitHubRepoBrowser />
-              </div>
-            </div>
+          <div className="opacity-0 animate-fade-up stagger-2">
+            <TemplateGallery />
           </div>
         </main>
 

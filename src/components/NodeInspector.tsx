@@ -40,7 +40,7 @@ export function NodeInspector() {
         <div className="flex items-center gap-2.5">
           <Info className="h-4 w-4" style={{ color: 'var(--color-text-ghost)' }} />
           <p className="text-sm" style={{ color: 'var(--color-text-ghost)' }}>
-            Select a node to inspect
+            Select a node to edit
           </p>
         </div>
       </div>

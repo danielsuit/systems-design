@@ -2,6 +2,13 @@ import { TemplateModel } from "../store/designStore";
 
 export const templates: TemplateModel[] = [
   {
+    id: "blank",
+    name: "Blank Canvas",
+    description: "Start from scratch with a clean board.",
+    notes: "Add nodes from the palette on the left.",
+    nodes: [],
+  },
+  {
     id: "modern-web",
     name: "Modern Web App",
     description: "SPA with API, cache, database, and observability edges.",
@@ -134,12 +141,5 @@ export const templates: TemplateModel[] = [
       { id: "dp3", from: "processor", to: "warehouse" },
       { id: "dp4", from: "processor", to: "search" },
     ],
-  },
-  {
-    id: "blank",
-    name: "Blank Canvas",
-    description: "Start from scratch with a clean board.",
-    notes: "Add nodes from the palette on the left.",
-    nodes: [],
   },
 ];

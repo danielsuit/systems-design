@@ -2,7 +2,7 @@ import { FormEvent, useState } from "react";
 import { 
   Folder, FolderOpen, Github, GitBranch, FileText, 
   Code2, FileJson, FileCode, Settings, Package,
-  Type, Database, Image as ImageIcon, Loader2
+  Type, Database, Image as ImageIcon, Loader2, ChevronRight
 } from "lucide-react";
 import { FileNode, mockRepoTrees } from "../data/mockRepoTrees";
 import { useDesignStore } from "../store/designStore";
@@ -201,17 +201,22 @@ export function GitHubRepoBrowser() {
     }
   };
 
+  const [expanded, setExpanded] = useState(false);
+
   return (
-    <div className="space-y-5">
-      {/* Section header */}
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-5">
+      {/* Section header — clickable to toggle */}
+      <button
+        className="flex w-full items-center gap-3 text-left"
+        onClick={() => setExpanded((v) => !v)}
+      >
         <div
           className="flex h-8 w-8 items-center justify-center rounded-lg"
           style={{ background: 'var(--color-surface-2)' }}
         >
           <Github className="h-4 w-4" style={{ color: 'var(--color-text-secondary)' }} />
         </div>
-        <div>
+        <div className="flex-1">
           <h2 className="font-display text-base" style={{ color: 'var(--color-text-primary)' }}>
             Repository
           </h2>
@@ -219,8 +224,16 @@ export function GitHubRepoBrowser() {
             Browse a GitHub file tree
           </p>
         </div>
-      </div>
+        <ChevronRight
+          className="h-4 w-4 transition-transform duration-200"
+          style={{
+            color: 'var(--color-text-ghost)',
+            transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+          }}
+        />
+      </button>
 
+      {!expanded ? null : <div className="flex flex-col gap-5">
       <form onSubmit={handleSubmit} className="space-y-3">
         {/* Repo input */}
         <div
@@ -332,6 +345,7 @@ export function GitHubRepoBrowser() {
           </p>
         )}
       </div>
+      </div>}
     </div>
   );
 }
